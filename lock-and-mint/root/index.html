@@ -21,14 +21,15 @@
       word-wrap: break-word;
     }
   </style>
-  <!-- Подключаем ethers.js UMD-версию -->
+  <!-- Подключаем ethers.js (UMD версия) для Phantom (EVM) -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 </head>
 <body>
   <h1>Lock & Mint Demo</h1>
-  <button id="connectBtn">Подключить Phantom (EVM)</button>
+  <button id="connectPhantomBtn">Подключить Phantom (EVM)</button>
   <button id="lockBtn">Заблокировать 0.0002 ETH</button>
   <button id="checkBtn">Проверить Solana-транзакцию</button>
+  <button id="connectSolflareBtn">Подключить Phantom (Solana)</button>
 
   <pre id="status"></pre>
 
@@ -37,9 +38,10 @@
     const serverUrl = "https://fluffy-spoon-q7pr4rxqp79vf4vww-3000.app.github.dev";
     
     let provider, signer, contract;
-    let connectedAddress = ""; // Сохраняем адрес, с которого подключились к Phantom
+    let connectedEvmAddress = ""; // Адрес, подключённый через Phantom (EVM)
+    let connectedSolAddress = ""; // Адрес, подключённый через Solflare (Solana)
 
-    // Адрес и ABI смарт-контракта ETHLock
+    // Адрес и ABI смарт-контракта ETHLock (для EVM)
     const contractAddress = "0x916ee15E71B5D7D41e99AfE7ea63F40Bf2dd10e6";
     const contractABI = [
       {
@@ -56,25 +58,40 @@
       document.getElementById("status").innerText += text + "\n";
     }
 
-    // Функция подключения к Phantom (EVM) и сохранения подключённого адреса
+    // Подключение к Phantom (EVM)
     async function connectPhantom() {
       if (!window.ethereum) {
-        appendStatus("Phantom EVM не найден. Убедитесь, что кошелёк установлен и в EVM-режиме.");
+        appendStatus("Phantom (EVM) не найден. Убедитесь, что кошелёк установлен и в EVM-режиме.");
         return;
       }
       try {
         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-        connectedAddress = accounts[0]; // Сохраняем адрес подключения
+        connectedEvmAddress = accounts[0];
         provider = new ethers.providers.Web3Provider(window.ethereum);
         signer = provider.getSigner();
         contract = new ethers.Contract(contractAddress, contractABI, signer);
-        appendStatus("Phantom подключён. Аккаунт: " + connectedAddress);
+        appendStatus("Phantom подключён. Аккаунт (EVM): " + connectedEvmAddress);
       } catch (err) {
         appendStatus("Ошибка подключения Phantom: " + err.message);
       }
     }
 
-    // Функция для вызова lockETH (блокировка 0.0002 ETH)
+    // Подключение к Solflare (Solana)
+    async function connectSolflare() {
+      if (window.solana) {
+        try {
+          const resp = await window.solana.connect();
+          connectedSolAddress = resp.publicKey.toString();
+          appendStatus("Solflare подключён. Аккаунт (Solana): " + connectedSolAddress);
+        } catch (err) {
+          appendStatus("Ошибка подключения Solflare: " + err.message);
+        }
+      } else {
+        appendStatus("Solflare Wallet не найден. Установите Solflare Wallet.");
+      }
+    }
+
+    // Вызываем lockETH (блокировка 0.0002 ETH)
     async function lockETH() {
       if (!contract) {
         appendStatus("Сначала подключите Phantom (EVM).");
@@ -92,10 +109,12 @@
       }
     }
 
-    // Функция проверки данных о чеканке с сервера (передаём динамически адрес)
+    // Функция проверки Solana-транзакции с сервера (используем response.text())
     async function checkSolanaTx() {
       try {
-        const addr = connectedAddress || "0xUserAddress"; // если адрес не подключён, используем значение по умолчанию
+        // Используем адрес, подключённый через Phantom (EVM) как параметр,
+        // либо адрес по умолчанию, если не подключён
+        const addr = connectedEvmAddress || "0xUserAddress";
         const response = await fetch(serverUrl + "/lastMint?address=" + encodeURIComponent(addr));
         const text = await response.text();
         appendStatus(text);
@@ -104,8 +123,8 @@
       }
     }
 
-    // Назначаем обработчики событий кнопкам
-    document.getElementById("connectBtn").addEventListener("click", connectPhantom);
+    document.getElementById("connectPhantomBtn").addEventListener("click", connectPhantom);
+    document.getElementById("connectSolflareBtn").addEventListener("click", connectSolflare);
     document.getElementById("lockBtn").addEventListener("click", lockETH);
     document.getElementById("checkBtn").addEventListener("click", checkSolanaTx);
   </script>

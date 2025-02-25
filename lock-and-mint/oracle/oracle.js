@@ -11,18 +11,10 @@
  */
 
 require('dotenv').config();
+
 const Web3 = (require('web3').default || require('web3'));
-const {
-  Connection,
-  Keypair,
-  clusterApiUrl,
-  PublicKey
-} = require('@solana/web3.js');
-const {
-  createMint,
-  getOrCreateAssociatedTokenAccount,
-  mintTo
-} = require('@solana/spl-token');
+const { Connection, Keypair, clusterApiUrl, PublicKey } = require('@solana/web3.js');
+const { createMint, getOrCreateAssociatedTokenAccount, mintTo, MintLayout } = require('@solana/spl-token');
 const fs = require('fs');
 const path = require('path');
 
@@ -62,33 +54,9 @@ try {
   process.exit(1);
 }
 
+// Инициализация мята (mint)
 let mintPublicKey;
 const SPL_TOKEN_MINT = process.env.SPL_TOKEN_MINT || "";
-
-// =========== Путь к файлу данных ===========
-const dataFilePath = path.join(__dirname, "../data/oracleData.json");
-
-// Функция для обновления или создания файла oracleData.json
-function updateOracleData(address, data) {
-  let oracleData = {};
-  if (fs.existsSync(dataFilePath)) {
-    try {
-      const fileContent = fs.readFileSync(dataFilePath, "utf8");
-      oracleData = JSON.parse(fileContent);
-    } catch (err) {
-      console.error("Ошибка чтения или парсинга oracleData.json:", err);
-    }
-  }
-  oracleData[address] = data;
-  try {
-    fs.writeFileSync(dataFilePath, JSON.stringify(oracleData, null, 2), "utf8");
-    console.log("Данные для адреса", address, "успешно обновлены в oracleData.json");
-  } catch (err) {
-    console.error("Ошибка записи в oracleData.json:", err);
-  }
-}
-
-// =========== Инициализация MINT ===========
 async function initMintIfNeeded() {
   if (SPL_TOKEN_MINT) {
     mintPublicKey = new PublicKey(SPL_TOKEN_MINT);
@@ -99,8 +67,8 @@ async function initMintIfNeeded() {
     mintPublicKey = await createMint(
       solanaConnection,
       solanaKeypair,
-      solanaKeypair.publicKey,
-      null,
+      solanaKeypair.publicKey, // mintAuthority
+      null,                    // freezeAuthority
       decimals
     );
     console.log("Новый mint создан:", mintPublicKey.toBase58());
@@ -108,9 +76,33 @@ async function initMintIfNeeded() {
   }
 }
 
-// =========== Чеканка токенов ===========
+// =========== Функция обновления файла oracleData.json ===========
+const dataFilePath = path.join(__dirname, "../data/oracleData.json");
+function updateOracleData(address, data) {
+  let oracleData = {};
+  if (fs.existsSync(dataFilePath)) {
+    try {
+      const fileContent = fs.readFileSync(dataFilePath, "utf8");
+      if (fileContent.trim() !== "") {
+        oracleData = JSON.parse(fileContent);
+      }
+    } catch (err) {
+      console.error("Ошибка чтения или парсинга oracleData.json:", err);
+    }
+  }
+  // Приводим адрес к нижнему регистру
+  oracleData[address.toLowerCase()] = data;
+  try {
+    fs.writeFileSync(dataFilePath, JSON.stringify(oracleData, null, 2), "utf8");
+    console.log("Данные для адреса", address, "успешно обновлены в oracleData.json");
+  } catch (err) {
+    console.error("Ошибка записи в oracleData.json:", err);
+  }
+}
+
+// =========== Функция чеканки токенов ===========
 /**
- * Чеканит токены в Solana и обновляет файл oracleData.json.
+ * Чеканит токены в Solana и обновляет oracleData.json.
  * @param {string} user - Ethereum адрес пользователя.
  * @param {string} depositAmount - сумма в wei.
  * @param {string} sequence - sequence события.
@@ -119,7 +111,6 @@ async function mintTokensInSolana(user, depositAmount, sequence) {
   console.log(`Пользователь: ${user}, заблокировано: ${depositAmount}, sequence: ${sequence}`);
   console.log(`Чеканим токен для depositAmount=${depositAmount}, sequence=${sequence}`);
 
-  // Получаем или создаём ассоциированный токен-аккаунт для плательщика
   const tokenAccount = await getOrCreateAssociatedTokenAccount(
     solanaConnection,
     solanaKeypair,
@@ -128,12 +119,10 @@ async function mintTokensInSolana(user, depositAmount, sequence) {
   );
 
   const decimals = 9;
-  // Простейшая логика конверсии: масштабируем depositAmount
   const mintedAmount = BigInt(depositAmount) / (10n ** (18n - BigInt(decimals)));
   const mintedAmountNumber = Number(mintedAmount);
   console.log(`Будем чеканить ~${mintedAmountNumber} субединиц (с учётом decimals=${decimals}).`);
 
-  // Чеканим токены
   const signature = await mintTo(
     solanaConnection,
     solanaKeypair,
@@ -147,17 +136,16 @@ async function mintTokensInSolana(user, depositAmount, sequence) {
   console.log("Подпись (Tx Signature) для чеканки:", signature);
   console.log("Проверьте транзакцию на https://explorer.solana.com/tx/" + signature + "?cluster=devnet");
 
-  // Формируем объект для записи
   const oracleRecord = {
     user: user,
     depositAmount: depositAmount,
     sequence: sequence,
     tokenAccount: tokenAccount.address.toBase58(),
+    mintAddress: mintPublicKey.toBase58(), // добавляем mint address
     txSignature: signature,
     explorerUrl: "https://explorer.solana.com/tx/" + signature + "?cluster=devnet"
   };
 
-  // Обновляем файл oracleData.json для этого адреса
   updateOracleData(user, oracleRecord);
 }
 
