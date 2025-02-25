@@ -30,6 +30,7 @@ app.get("/lastMint", (req, res) => {
     if (fileData.trim() !== "") {
       try {
         const parsedData = JSON.parse(fileData);
+        // Приводим все ключи к нижнему регистру
         for (const key in parsedData) {
           oracleData[key.toLowerCase()] = parsedData[key];
         }
@@ -38,20 +39,22 @@ app.get("/lastMint", (req, res) => {
         return res.status(500).json({ error: "Ошибка парсинга данных" });
       }
     }
+    // Получаем адрес из query-параметра и приводим его к нижнему регистру
     const addr = (req.query.address || "").toLowerCase();
     if (addr && oracleData[addr]) {
       const d = oracleData[addr];
-      const responseText =
-`Пользователь: ${d.user}
-Заблокировано (wei): ${d.depositAmount}
-Sequence: ${d.sequence}
-Токен-аккаунт (Solana): ${d.tokenAccount}
-Mint (Token Mint): ${d.mintAddress}
-Подпись (Tx Signature): ${d.txSignature}
-Ссылка на Solana Explorer: ${d.explorerUrl}`;
+      let responseText = `Пользователь: ${d.user}\n` +
+                         `Заблокировано (wei): ${d.depositAmount}\n` +
+                         `Sequence: ${d.sequence}\n` +
+                         `Токен-аккаунт (Solana): ${d.tokenAccount}\n`;
+      if (d.mintAddress) {
+        responseText += `Mint (Token Mint): ${d.mintAddress}\n`;
+      }
+      responseText += `Подпись (Tx Signature): ${d.txSignature}\n` +
+                      `Ссылка на Solana Explorer: ${d.explorerUrl}`;
       res.send(responseText);
     } else {
-      const fallbackText = `Данные для адреса ${req.query.address || ""} отсутствуют`;
+      const fallbackText = `Данные для адреса ${req.query.address || ""} отсутствуют.`;
       res.send(fallbackText);
     }
   });
