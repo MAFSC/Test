@@ -21,6 +21,7 @@
       word-wrap: break-word;
     }
   </style>
+  <!-- Подключаем ethers.js UMD-версию -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 </head>
 <body>
@@ -32,12 +33,13 @@
   <pre id="status"></pre>
 
   <script>
-    // Настройки сервера
-    const serverUrl = "https://fluffy-spoon-q7pr4rxqp79vf4vww-3000.app.github.dev/"; // Убедитесь, что это правильный HTTP-сервер
-
+    // Публичный URL сервера (Codespaces проброс порта)
+    const serverUrl = "https://fluffy-spoon-q7pr4rxqp79vf4vww-3000.app.github.dev";
+    
     let provider, signer, contract;
+    let connectedAddress = ""; // Сохраняем адрес, с которого подключились к Phantom
 
-    // Адрес и ABI контракта ETHLock
+    // Адрес и ABI смарт-контракта ETHLock
     const contractAddress = "0x916ee15E71B5D7D41e99AfE7ea63F40Bf2dd10e6";
     const contractABI = [
       {
@@ -49,12 +51,12 @@
       }
     ];
 
-    // Функция для вывода текста в #status
+    // Функция для вывода текста в элемент #status
     function appendStatus(text) {
       document.getElementById("status").innerText += text + "\n";
     }
 
-    // Подключаемся к Phantom (EVM)
+    // Функция подключения к Phantom (EVM) и сохранения подключённого адреса
     async function connectPhantom() {
       if (!window.ethereum) {
         appendStatus("Phantom EVM не найден. Убедитесь, что кошелёк установлен и в EVM-режиме.");
@@ -62,16 +64,17 @@
       }
       try {
         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+        connectedAddress = accounts[0]; // Сохраняем адрес подключения
         provider = new ethers.providers.Web3Provider(window.ethereum);
         signer = provider.getSigner();
         contract = new ethers.Contract(contractAddress, contractABI, signer);
-        appendStatus("Phantom подключён. Аккаунт: " + accounts[0]);
+        appendStatus("Phantom подключён. Аккаунт: " + connectedAddress);
       } catch (err) {
         appendStatus("Ошибка подключения Phantom: " + err.message);
       }
     }
 
-    // Вызываем lockETH (блокировка 0.0002 ETH)
+    // Функция для вызова lockETH (блокировка 0.0002 ETH)
     async function lockETH() {
       if (!contract) {
         appendStatus("Сначала подключите Phantom (EVM).");
@@ -89,39 +92,19 @@
       }
     }
 
-    // Запрашиваем у оракула (Node.js) данные о последней чеканке
+    // Функция проверки данных о чеканке с сервера (передаём динамически адрес)
     async function checkSolanaTx() {
       try {
-        // Делаем GET-запрос к серверу
-        const response = await fetch(serverUrl + "/lastMint");
-        const data = await response.json();
-
-        // Если txSignature отсутствует, значит чеканки не было
-        if (!data.txSignature) {
-          appendStatus("Пока нет новых чеканок (txSignature пуст).");
-          return;
-        }
-
-        appendStatus("Пользователь (ETH): " + data.user);
-        appendStatus("Заблокировано (wei): " + data.depositAmount);
-        appendStatus("Sequence: " + data.sequence);
-        appendStatus("Токен-аккаунт (Solana): " + data.tokenAccount);
-        appendStatus("Подпись (Tx): " + data.txSignature);
-
-        // Проверяем, есть ли explorerUrl (добавленный в oracle.js)
-        if (data.explorerUrl) {
-          appendStatus("Ссылка на Solana Explorer: " + data.explorerUrl);
-        } else {
-          // Если explorerUrl нет, fallback на ручную генерацию
-          const fallbackUrl = "https://explorer.solana.com/tx/" + data.txSignature + "?cluster=devnet";
-          appendStatus("Ссылка на Solana Explorer (fallback): " + fallbackUrl);
-        }
+        const addr = connectedAddress || "0xUserAddress"; // если адрес не подключён, используем значение по умолчанию
+        const response = await fetch(serverUrl + "/lastMint?address=" + encodeURIComponent(addr));
+        const text = await response.text();
+        appendStatus(text);
       } catch (err) {
         appendStatus("Ошибка при запросе /lastMint: " + err.message);
       }
     }
 
-    // Навешиваем обработчики на кнопки
+    // Назначаем обработчики событий кнопкам
     document.getElementById("connectBtn").addEventListener("click", connectPhantom);
     document.getElementById("lockBtn").addEventListener("click", lockETH);
     document.getElementById("checkBtn").addEventListener("click", checkSolanaTx);
