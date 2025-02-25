@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Lock & Mint Demo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+    }
+    #status {
+      margin-top: 20px;
+      white-space: pre-wrap;
+      border: 1px solid #ccc;
+      padding: 10px;
+      max-width: 500px;
+      word-wrap: break-word;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+</head>
+<body>
+  <h1>Lock & Mint Demo</h1>
+  <button id="connectBtn">Подключить Phantom (EVM)</button>
+  <button id="lockBtn">Заблокировать 0.0002 ETH</button>
+  <button id="checkBtn">Проверить Solana-транзакцию</button>
+
+  <pre id="status"></pre>
+
+  <script>
+    // Настройки сервера
+    const serverUrl = "https://194.5.152.242:443"; // Убедитесь, что это правильный HTTP-сервер
+
+    let provider, signer, contract;
+
+    // Адрес и ABI контракта ETHLock
+    const contractAddress = "0x916ee15E71B5D7D41e99AfE7ea63F40Bf2dd10e6";
+    const contractABI = [
+      {
+        "inputs": [],
+        "name": "lockETH",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+      }
+    ];
+
+    // Функция для вывода текста в #status
+    function appendStatus(text) {
+      document.getElementById("status").innerText += text + "\n";
+    }
+
+    // Подключаемся к Phantom (EVM)
+    async function connectPhantom() {
+      if (!window.ethereum) {
+        appendStatus("Phantom EVM не найден. Убедитесь, что кошелёк установлен и в EVM-режиме.");
+        return;
+      }
+      try {
+        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+        contract = new ethers.Contract(contractAddress, contractABI, signer);
+        appendStatus("Phantom подключён. Аккаунт: " + accounts[0]);
+      } catch (err) {
+        appendStatus("Ошибка подключения Phantom: " + err.message);
+      }
+    }
+
+    // Вызываем lockETH (блокировка 0.0002 ETH)
+    async function lockETH() {
+      if (!contract) {
+        appendStatus("Сначала подключите Phantom (EVM).");
+        return;
+      }
+      try {
+        const tx = await contract.lockETH({
+          value: ethers.utils.parseEther("0.0002")
+        });
+        appendStatus("Отправлена транзакция lockETH: " + tx.hash + "\nОжидаем подтверждения...");
+        const receipt = await tx.wait();
+        appendStatus("Транзакция подтверждена в блоке: " + receipt.blockNumber);
+      } catch (err) {
+        appendStatus("Ошибка lockETH: " + err.message);
+      }
+    }
+
+    // Запрашиваем у оракула (Node.js) данные о последней чеканке
+    async function checkSolanaTx() {
+      try {
+        // Делаем GET-запрос к серверу
+        const response = await fetch(serverUrl + "/lastMint");
+        const data = await response.json();
+
+        // Если txSignature отсутствует, значит чеканки не было
+        if (!data.txSignature) {
+          appendStatus("Пока нет новых чеканок (txSignature пуст).");
+          return;
+        }
+
+        appendStatus("Пользователь (ETH): " + data.user);
+        appendStatus("Заблокировано (wei): " + data.depositAmount);
+        appendStatus("Sequence: " + data.sequence);
+        appendStatus("Токен-аккаунт (Solana): " + data.tokenAccount);
+        appendStatus("Подпись (Tx): " + data.txSignature);
+
+        // Проверяем, есть ли explorerUrl (добавленный в oracle.js)
+        if (data.explorerUrl) {
+          appendStatus("Ссылка на Solana Explorer: " + data.explorerUrl);
+        } else {
+          // Если explorerUrl нет, fallback на ручную генерацию
+          const fallbackUrl = "https://explorer.solana.com/tx/" + data.txSignature + "?cluster=devnet";
+          appendStatus("Ссылка на Solana Explorer (fallback): " + fallbackUrl);
+        }
+      } catch (err) {
+        appendStatus("Ошибка при запросе /lastMint: " + err.message);
+      }
+    }
+
+    // Навешиваем обработчики на кнопки
+    document.getElementById("connectBtn").addEventListener("click", connectPhantom);
+    document.getElementById("lockBtn").addEventListener("click", lockETH);
+    document.getElementById("checkBtn").addEventListener("click", checkSolanaTx);
+  </script>
+</body>
+</html>
