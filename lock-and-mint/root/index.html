@@ -27,7 +27,7 @@
 <body>
   <h1>Lock & Mint Demo</h1>
   <button id="connectPhantomBtn">Подключить Phantom (EVM)</button>
-  <button id="lockBtn">Заблокировать 0.0002 ETH</button>
+  <button id="lockBtn">Заблокировать 0.0001 ETH</button>
   <button id="checkBtn">Проверить Solana-транзакцию</button>
   <button id="connectSolflareBtn">Подключить Phantom (Solana)</button>
 
@@ -91,7 +91,7 @@
       }
     }
 
-    // Вызываем lockETH (блокировка 0.0002 ETH)
+    // Вызываем lockETH (блокировка 0.0001 ETH)
     async function lockETH() {
       if (!contract) {
         appendStatus("Сначала подключите Phantom (EVM).");
@@ -99,7 +99,7 @@
       }
       try {
         const tx = await contract.lockETH({
-          value: ethers.utils.parseEther("0.0002")
+          value: ethers.utils.parseEther("0.0001")
         });
         appendStatus("Отправлена транзакция lockETH: " + tx.hash + "\nОжидаем подтверждения...");
         const receipt = await tx.wait();
