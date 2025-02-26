@@ -24,7 +24,7 @@
   <!-- Подключаем ethers.js (UMD версия) для Phantom (EVM) -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <!-- Подключаем Solana Web3.js для работы с Solana -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/@solana/web3.js/1.75.0/web3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/@solana/web3.js/1.75.0/web3.umd.min.js"></script>
 </head>
 <body>
   <h1>Lock & Mint Demo</h1>
@@ -116,7 +116,7 @@
       try {
         const connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl("devnet"));
         const transaction = new solanaWeb3.Transaction();
-        const mintAddress = new solanaWeb3.PublicKey("MintPublicKeyHere");
+        const mintAddress = new solanaWeb3.PublicKey("5YDZuT8SHNDRfmmShNc52jsaNYH56zpSsbA2ooJ5HbTH");
         const recipient = new solanaWeb3.PublicKey(connectedSolAddress);
         const instructions = solanaWeb3.SystemProgram.transfer({
           fromPubkey: recipient,
@@ -139,4 +139,5 @@
   </script>
 </body>
 </html>
+
 
