@@ -23,8 +23,8 @@
   </style>
   <!-- Подключаем ethers.js (UMD версия) для Phantom (EVM) -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <!-- Подключаем Solana Web3.js для работы с Solana -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/@solana/web3.js/1.75.0/web3.umd.min.js"></script>
+  <!-- Подключаем solana/web3.js для работы с сетью Solana -->
+  <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@latest/lib/index.iife.js"></script>
 </head>
 <body>
   <h1>Lock & Mint Demo</h1>
@@ -32,28 +32,49 @@
   <button id="lockBtn">Заблокировать 0.0002 ETH</button>
   <button id="checkBtn">Проверить Solana-транзакцию</button>
   <button id="connectSolflareBtn">Подключить Phantom (Solana)</button>
-  <button id="mintTokenBtn">Купить отчеканенный токен</button>
+
+  <!-- Новая кнопка покупки токена -->
+  <button id="buyTokenBtn">Купить отчеканенный токен (Solana)</button>
 
   <pre id="status"></pre>
 
   <script>
+    // Публичный URL сервера (Codespaces или ваш сервер)
     const serverUrl = "https://fluffy-spoon-q7pr4rxqp79vf4vww-3000.app.github.dev";
+    
     let provider, signer, contract;
-    let connectedEvmAddress = "";
-    let connectedSolAddress = "";
+    let connectedEvmAddress = "";  // Адрес, подключённый через Phantom (EVM)
+    let connectedSolAddress = "";  // Адрес, подключённый через Phantom/Solflare (Solana)
 
+    // Создаём соединение с Solana Devnet (тестовая сеть)
+    const solanaWeb3 = window.solanaWeb3;  // из <script src="...web3.js">
+    const connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl("devnet"));
+
+    // Адрес и ABI смарт-контракта ETHLock (для EVM)
     const contractAddress = "0x916ee15E71B5D7D41e99AfE7ea63F40Bf2dd10e6";
     const contractABI = [
-      { "inputs": [], "name": "lockETH", "outputs": [], "stateMutability": "payable", "type": "function" }
+      {
+        "inputs": [],
+        "name": "lockETH",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+      }
     ];
 
+    // Функция для вывода текста в элемент #status
     function appendStatus(text) {
       document.getElementById("status").innerText += text + "\n";
     }
 
+    // ----------------------
+    //       EVM-часть
+    // ----------------------
+
+    // Подключение к Phantom (EVM)
     async function connectPhantom() {
       if (!window.ethereum) {
-        appendStatus("Phantom (EVM) не найден.");
+        appendStatus("Phantom (EVM) не найден. Убедитесь, что кошелёк установлен и в EVM-режиме.");
         return;
       }
       try {
@@ -62,34 +83,23 @@
         provider = new ethers.providers.Web3Provider(window.ethereum);
         signer = provider.getSigner();
         contract = new ethers.Contract(contractAddress, contractABI, signer);
-        appendStatus("Phantom подключён: " + connectedEvmAddress);
+        appendStatus("Phantom (EVM) подключён. Аккаунт: " + connectedEvmAddress);
       } catch (err) {
-        appendStatus("Ошибка Phantom: " + err.message);
+        appendStatus("Ошибка подключения Phantom: " + err.message);
       }
     }
 
-    async function connectSolflare() {
-      if (window.solana) {
-        try {
-          const resp = await window.solana.connect();
-          connectedSolAddress = resp.publicKey.toString();
-          appendStatus("Solflare подключён: " + connectedSolAddress);
-        } catch (err) {
-          appendStatus("Ошибка Solflare: " + err.message);
-        }
-      } else {
-        appendStatus("Solflare Wallet не найден.");
-      }
-    }
-
+    // Вызываем lockETH (блокировка 0.0002 ETH)
     async function lockETH() {
       if (!contract) {
-        appendStatus("Сначала подключите Phantom (EVM).\n");
+        appendStatus("Сначала подключите Phantom (EVM).");
         return;
       }
       try {
-        const tx = await contract.lockETH({ value: ethers.utils.parseEther("0.0002") });
-        appendStatus("Транзакция lockETH отправлена: " + tx.hash);
+        const tx = await contract.lockETH({
+          value: ethers.utils.parseEther("0.0002")
+        });
+        appendStatus("Отправлена транзакция lockETH: " + tx.hash + "\nОжидаем подтверждения...");
         const receipt = await tx.wait();
         appendStatus("Транзакция подтверждена в блоке: " + receipt.blockNumber);
       } catch (err) {
@@ -97,47 +107,99 @@
       }
     }
 
+    // ----------------------
+    //     Solana-часть
+    // ----------------------
+
+    // Подключение к Solflare или Phantom (Solana)
+    async function connectSolflare() {
+      if (window.solana) {
+        try {
+          const resp = await window.solana.connect();
+          connectedSolAddress = resp.publicKey.toString();
+          appendStatus("Phantom/Solflare (Solana) подключён. Аккаунт: " + connectedSolAddress);
+        } catch (err) {
+          appendStatus("Ошибка подключения к Solana-кошельку: " + err.message);
+        }
+      } else {
+        appendStatus("Solflare/Phantom Wallet не найден. Установите Solflare или Phantom.");
+      }
+    }
+
+    // Функция проверки Solana-транзакции с сервера (используем response.text())
     async function checkSolanaTx() {
       try {
+        // Используем EVM-адрес в качестве параметра,
+        // либо адрес по умолчанию, если EVM-кошелёк не подключён.
         const addr = connectedEvmAddress || "0xUserAddress";
         const response = await fetch(serverUrl + "/lastMint?address=" + encodeURIComponent(addr));
         const text = await response.text();
-        appendStatus(text);
+        appendStatus("Результат запроса /lastMint:\n" + text);
       } catch (err) {
-        appendStatus("Ошибка запроса /lastMint: " + err.message);
+        appendStatus("Ошибка при запросе /lastMint: " + err.message);
       }
     }
 
-    async function mintToken() {
+    // Покупка отчеканенного токена через Solana
+    async function buyMintedToken() {
       if (!connectedSolAddress) {
-        appendStatus("Сначала подключите Phantom (Solana).\n");
+        appendStatus("Сначала подключите Solflare/Phantom (Solana).");
         return;
       }
+
       try {
-        const connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl("devnet"));
-        const transaction = new solanaWeb3.Transaction();
-        const mintAddress = new solanaWeb3.PublicKey("5YDZuT8SHNDRfmmShNc52jsaNYH56zpSsbA2ooJ5HbTH");
-        const recipient = new solanaWeb3.PublicKey(connectedSolAddress);
-        const instructions = solanaWeb3.SystemProgram.transfer({
-          fromPubkey: recipient,
-          toPubkey: mintAddress,
-          lamports: 1000000,
-        });
-        transaction.add(instructions);
+        appendStatus("Запрос на сервер для формирования транзакции покупки токена...");
+        
+        // Предполагается, что ваш сервер вернёт объект вида:
+        // { transactionBase64: "..." }
+        // где "..." — это закодированная в base64 подписанная (или частично подписанная) транзакция.
+        const response = await fetch(
+          serverUrl + "/buyToken?address=" + encodeURIComponent(connectedSolAddress)
+        );
+
+        if (!response.ok) {
+          throw new Error("Сервер вернул ошибку: " + response.statusText);
+        }
+
+        const json = await response.json();
+        const transactionBase64 = json.transactionBase64;
+        if (!transactionBase64) {
+          throw new Error("transactionBase64 не найден в ответе сервера");
+        }
+
+        // Декодируем Base64 в бинарный формат (Buffer)
+        const transactionBuffer = Buffer.from(transactionBase64, "base64");
+
+        // Преобразуем Buffer в объект Transaction
+        const transaction = solanaWeb3.Transaction.from(transactionBuffer);
+
+        // Подписываем и отправляем транзакцию через кошелёк
+        // signAndSendTransaction в Phantom возвращает объект { signature }
         const { signature } = await window.solana.signAndSendTransaction(transaction);
-        appendStatus("Токен куплен! Транзакция: " + signature);
+
+        appendStatus("Транзакция отправлена, сигнатура: " + signature);
+        appendStatus("Ожидаем подтверждения...");
+
+        // Ждём подтверждения
+        const latestBlockhash = await connection.getLatestBlockhash();
+        await connection.confirmTransaction({
+          signature,
+          blockhash: latestBlockhash.blockhash,
+          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
+        });
+
+        appendStatus("Транзакция подтверждена! Токен должен быть зачислен в ваш кошелёк.");
       } catch (err) {
-        appendStatus("Ошибка покупки токена: " + err.message);
+        appendStatus("Ошибка при покупке токена: " + err.message);
       }
     }
 
+    // Вешаем обработчики на кнопки
     document.getElementById("connectPhantomBtn").addEventListener("click", connectPhantom);
-    document.getElementById("connectSolflareBtn").addEventListener("click", connectSolflare);
     document.getElementById("lockBtn").addEventListener("click", lockETH);
     document.getElementById("checkBtn").addEventListener("click", checkSolanaTx);
-    document.getElementById("mintTokenBtn").addEventListener("click", mintToken);
+    document.getElementById("connectSolflareBtn").addEventListener("click", connectSolflare);
+    document.getElementById("buyTokenBtn").addEventListener("click", buyMintedToken);
   </script>
 </body>
 </html>
-
-
