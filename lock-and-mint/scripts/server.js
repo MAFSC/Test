@@ -23,38 +23,38 @@ app.get("/lastMint", (req, res) => {
 
   fs.readFile(filePath, "utf8", (err, fileData) => {
     if (err) {
-      console.error("Ошибка чтения файла:", err);
-      return res.status(500).json({ error: "Ошибка чтения данных о чеканке" });
+      console.error("File read error:", err);
+      return res.status(500).json({ error: "Error reading minting data" });
     }
     let oracleData = {};
     if (fileData.trim() !== "") {
       try {
         const parsedData = JSON.parse(fileData);
-        // Приводим все ключи к нижнему регистру
+        // Convert all keys to lowercase
         for (const key in parsedData) {
           oracleData[key.toLowerCase()] = parsedData[key];
         }
       } catch (e) {
-        console.error("Ошибка парсинга JSON:", e);
-        return res.status(500).json({ error: "Ошибка парсинга данных" });
+        console.error("JSON parsing error:", e);
+        return res.status(500).json({ error: "Error parsing data" });
       }
     }
-    // Получаем адрес из query-параметра и приводим его к нижнему регистру
+    // Get the address from the query parameter and convert it to lowercase
     const addr = (req.query.address || "").toLowerCase();
     if (addr && oracleData[addr]) {
       const d = oracleData[addr];
-      let responseText = `Пользователь: ${d.user}\n` +
-                         `Заблокировано (wei): ${d.depositAmount}\n` +
+      let responseText = `User: ${d.user}\n` +
+                         `Locked (wei): ${d.depositAmount}\n` +
                          `Sequence: ${d.sequence}\n` +
-                         `Токен-аккаунт (Solana): ${d.tokenAccount}\n`;
+                         `Token Account (Solana): ${d.tokenAccount}\n`;
       if (d.mintAddress) {
         responseText += `Mint (Token Mint): ${d.mintAddress}\n`;
       }
-      responseText += `Подпись (Tx Signature): ${d.txSignature}\n` +
-                      `Ссылка на Solana Explorer: ${d.explorerUrl}`;
+      responseText += `Tx Signature: ${d.txSignature}\n` +
+                      `Solana Explorer Link: ${d.explorerUrl}`;
       res.send(responseText);
     } else {
-      const fallbackText = `Данные для адреса ${req.query.address || ""} отсутствуют.`;
+      const fallbackText = `No data available for address ${req.query.address || ""}.`;
       res.send(fallbackText);
     }
   });
@@ -62,8 +62,5 @@ app.get("/lastMint", (req, res) => {
 
 const httpsServer = https.createServer(credentials, app);
 httpsServer.listen(3000, "0.0.0.0", () => {
-  console.log("HTTPS сервер запущен на порту 3000");
+  console.log("HTTPS server started on port 3000");
 });
-
-
-
