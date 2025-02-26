@@ -149,6 +149,38 @@ async function mintTokensInSolana(user, depositAmount, sequence) {
   updateOracleData(user, oracleRecord);
 }
 
+// Функция продажи токенов
+async function sellTokens(buyerPublicKey, amount) {
+  try {
+    const buyerPubKey = new PublicKey(buyerPublicKey);
+    const sellerTokenAccount = await getOrCreateAssociatedTokenAccount(
+      solanaConnection,
+      solanaKeypair,
+      mintPublicKey,
+      solanaKeypair.publicKey
+    );
+    const buyerTokenAccount = await getOrCreateAssociatedTokenAccount(
+      solanaConnection,
+      solanaKeypair,
+      mintPublicKey,
+      buyerPubKey
+    );
+
+    const signature = await transfer(
+      solanaConnection,
+      solanaKeypair,
+      sellerTokenAccount.address,
+      buyerTokenAccount.address,
+      solanaKeypair.publicKey,
+      amount
+    );
+
+    console.log("Токены успешно проданы. Tx Signature:", signature);
+    return signature;
+  } catch (error) {
+    console.error("Ошибка при продаже токенов:", error);
+  }
+}
 // =========== Мониторинг событий Ethereum ===========
 function monitorEthereum() {
   console.log('Начало мониторинга события ETHLocked...');
