@@ -23,154 +23,130 @@
       word-wrap: break-word;
     }
   </style>
-  <!-- Подключаем UMD-версию ethers.js (для Phantom в режиме EVM) -->
+  <!-- Подключаем UMD-версию ethers.js -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <!-- Подключение Solana Web3 (UMD-бандл, например, неофициальный) -->
-  <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.73.1/lib/index.iife.js"></script>
+  <!-- Подключаем Solana Web3.js (неофициальная UMD сборка) -->
+  <script src="https://cdn.jsdelivr.net/gh/solana-labs/solana-web3.js/bundle.js"></script>
 </head>
 <body>
   <h1>Lock & Mint Demo</h1>
   <button id="connectPhantomBtn">Подключить Phantom (EVM)</button>
-  <button id="connectSolflareBtn">Подключить Phantom (Solana)</button>
   <button id="lockBtn">Заблокировать 0.0002 ETH</button>
-  <button id="checkBtn">Проверить Solana транзакцию</button>
+  <button id="checkBtn">Проверить Solana-транзакцию</button>
+  <button id="connectSolflareBtn">Подключить Phantom (Solana)</button>
   <pre id="status"></pre>
-  
+
   <script>
-    // URL публичного сервера оракула (например, где запущен Node.js-сервер)
+    // Публичный сервер оракула (например, у вас запущен по этому URL)
     const serverUrl = "https://fluffy-spoon-q7pr4rxqp79vf4vww-3000.app.github.dev";
     
-    // EVM настройки для ETHLock
+    // -------------------- EVM (Ethereum) --------------------
+    let provider, signer, contract;
+    let connectedEvmAddress = ""; // адрес, полученный через Phantom (EVM)
+
+    // Адрес контракта ETHLock (установлен на Sepolia)
     const contractAddress = "0x916ee15E71B5D7D41e99AfE7ea63F40Bf2dd10e6";
+    // Сокращённый ABI для lockETH и события ETHLocked
     const contractABI = [
+      {
+        "anonymous": false,
+        "inputs": [
+          { "indexed": true, "internalType": "address", "name": "user", "type": "address" },
+          { "indexed": false, "internalType": "uint256", "name": "depositAmount", "type": "uint256" },
+          { "indexed": false, "internalType": "uint64", "name": "sequence", "type": "uint64" }
+        ],
+        "name": "ETHLocked",
+        "type": "event"
+      },
       {
         "inputs": [],
         "name": "lockETH",
         "outputs": [],
         "stateMutability": "payable",
         "type": "function"
-      },
-      {
-        "anonymous": false,
-        "inputs": [
-          { "indexed": true, "internalType": "address", "name": "user", "type": "address" },
-          { "indexed": false, "internalType": "uint256", "name": "depositAmount", "type": "uint256" },
-          { "indexed": false, "internalType": "uint64",  "name": "sequence", "type": "uint64" }
-        ],
-        "name": "ETHLocked",
-        "type": "event"
       }
     ];
-    
-    // Глобальные переменные для EVM (Phantom) подключения
-    let evmProvider, evmSigner, evmContract, connectedEvmAddress = "";
-    
-    // Глобальные переменные для Solana (Phantom) подключения
-    let connectedSolAddress = "";
-    
-    // Вспомогательная функция для вывода логов на страницу
-    function appendStatus(text) {
-      const statusEl = document.getElementById("status");
-      statusEl.innerText += text + "\n";
-    }
-    
-    // Подключение Phantom (EVM)
+
+    // Функция подключения к Phantom (EVM)
     async function connectPhantom() {
       if (!window.ethereum) {
-        appendStatus("Phantom (EVM) не найден. Проверьте, что кошелек установлен и в режиме EVM.");
+        appendStatus("Phantom (EVM) не найден. Убедитесь, что кошелек установлен и в EVM режиме.");
         return;
       }
       try {
         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
         connectedEvmAddress = accounts[0];
-        evmProvider = new ethers.providers.Web3Provider(window.ethereum);
-        evmSigner = evmProvider.getSigner();
-        evmContract = new ethers.Contract(contractAddress, contractABI, evmSigner);
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+        contract = new ethers.Contract(contractAddress, contractABI, signer);
         appendStatus("Phantom (EVM) подключён. Аккаунт: " + connectedEvmAddress);
-      } catch (error) {
-        appendStatus("Ошибка подключения Phantom (EVM): " + error.message);
+      } catch (err) {
+        appendStatus("Ошибка подключения Phantom (EVM): " + err.message);
       }
     }
-    
-    // Подключение Phantom (Solana)
+
+    // Функция для вызова lockETH
+    async function lockETH() {
+      if (!contract) {
+        appendStatus("Сначала подключите Phantom (EVM).");
+        return;
+      }
+      try {
+        const tx = await contract.lockETH({ value: ethers.utils.parseEther("0.0002") });
+        appendStatus("Транзакция lockETH отправлена: " + tx.hash + "\nОжидаем подтверждения...");
+        const receipt = await tx.wait();
+        appendStatus("Транзакция подтверждена. Block number: " + receipt.blockNumber);
+      } catch (err) {
+        appendStatus("Ошибка lockETH: " + err.message);
+      }
+    }
+
+    // -------------------- Solana --------------------
+    // Для подключения к кошельку Phantom (Solana)
+    let connectedSolAddress = "";
+
     async function connectSolflare() {
       if (window.solana) {
         try {
           const resp = await window.solana.connect();
           connectedSolAddress = resp.publicKey.toString();
           appendStatus("Phantom (Solana) подключён. Аккаунт: " + connectedSolAddress);
-        } catch (error) {
-          appendStatus("Ошибка подключения Phantom (Solana): " + error.message);
+        } catch (err) {
+          appendStatus("Ошибка подключения Phantom (Solana): " + err.message);
         }
       } else {
-        appendStatus("Phantom (Solana) не найден. Установите кошелек Phantom для Solana.");
+        appendStatus("Phantom (Solana) не найден. Убедитесь, что установлен кошелек Phantom для Solana.");
       }
     }
-    
-    // Функция для вызова lockETH() на Ethereum
-    async function lockETH() {
-      if (!evmContract) {
-        appendStatus("Сначала подключите Phantom (EVM)!");
-        return;
-      }
-      try {
-        const tx = await evmContract.lockETH({ value: ethers.utils.parseEther("0.0002") });
-        appendStatus("lockETH транзакция отправлена: " + tx.hash + "\nОжидаем подтверждения...");
-        const receipt = await tx.wait();
-        appendStatus("lockETH транзакция подтверждена. Block: " + receipt.blockNumber);
-      } catch (error) {
-        appendStatus("Ошибка вызова lockETH: " + error.message);
-      }
-    }
-    
-    // Функция для проверки Solana транзакции через сервер оракула
+
+    // Функция проверки Solana-транзакции через ваш сервер-оракул
     async function checkSolanaTx() {
       try {
-        // Используем параметр адреса EVM (если не подключён, укажите значение по умолчанию)
-        const addr = connectedEvmAddress || "0xUserAddress";
-        const response = await fetch(serverUrl + "/lastMint?address=" + encodeURIComponent(addr));
+        // Используйте абсолютный URL вашего сервера
+        const response = await fetch(serverUrl + "/lastMint?address=" + encodeURIComponent(connectedEvmAddress));
         const text = await response.text();
-        appendStatus(text);
-      } catch (error) {
-        appendStatus("Ошибка запроса /lastMint: " + error.message);
+        appendStatus("Ответ сервера:\n" + text);
+      } catch (err) {
+        appendStatus("Ошибка при запросе /lastMint: " + err.message);
       }
     }
-    
-    // Навешиваем обработчики событий на кнопки
+
+    // -------------------- Вспомогательная функция --------------------
+    function appendStatus(text) {
+      let el = document.getElementById("status");
+      el.innerText += text + "\n";
+    }
+
+    // -------------------- Навешивание событий на кнопки --------------------
     document.getElementById("connectPhantomBtn").addEventListener("click", connectPhantom);
-    document.getElementById("connectSolflareBtn").addEventListener("click", connectSolflare);
     document.getElementById("lockBtn").addEventListener("click", lockETH);
     document.getElementById("checkBtn").addEventListener("click", checkSolanaTx);
-    
-    // Запуск оракула для прослушивания событий из Ethereum
-    // Здесь обычно оракул работает на сервере. Если же хотите клиентский вариант,
-    // убедитесь, что страница не закрывается, иначе события не будут отслежены.
-    async function startOracle() {
-      // Для получения событий из истории можно использовать fromBlock: 0
-      const eventFilter = evmContract.filters.ETHLocked();
-      evmProvider.once("block", async (blockNumber) => {
-        try {
-          const events = await evmContract.queryFilter(eventFilter, blockNumber);
-          if (events.length > 0) {
-            events.forEach((event) => {
-              appendStatus("Найдено событие ETHLocked (история): " + JSON.stringify(event.args, null, 2));
-            });
-          }
-        } catch (err) {
-          appendStatus("Ошибка получения прошлых событий: " + err.message);
-        }
-      });
-      appendStatus("Оракул для событий ETHLocked запущен.");
-    }
-    
-    // Запускаем оракул сразу, если Phantom (EVM) уже подключён
-    window.addEventListener("load", () => {
-      appendStatus("Страница загружена. Оракул готов к работе.");
-      // Можно автоматически запустить мониторинг, если evmProvider уже установлен
-      // startOracle();
-    });
+    document.getElementById("connectSolflareBtn").addEventListener("click", connectSolflare);
+
+    // -------------------- Автоматический запуск оракула --------------------
+    // Здесь можно добавить логику подписки на события Ethereum, если требуется,
+    // однако выпуск токена на Solana будет осуществляться сервером-оракулом.
+    // На данном фронтенде мы только выводим информацию и вызываем lockETH().
   </script>
 </body>
 </html>
-
-
