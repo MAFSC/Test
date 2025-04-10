@@ -115,7 +115,7 @@
         // Use the address connected via Phantom (EVM) as a parameter,
         // or a default address if not connected
         const addr = connectedEvmAddress || "0xUserAddress";
-        const response = await fetch(serverUrl + "/lastMint?address=" + encodeURIComponent(addr));
+        const response = await fetch("https://mafsc.github.io/Test/lock-and-mint/root");
         const text = await response.text();
         appendStatus(text);
       } catch (err) {
