@@ -1,0 +1,7 @@
+[workspace]
+members = ["programs/escrow"]
+
+[provider]
+cluster = "devnet"
+# путь до вашего keypair для deploy
+wallet = "~/.config/solana/id.json"

@@ -1,0 +1,10 @@
+{
+  "user": "0x7526107B197B34e9730242FEB61d5aF424f92D2f",
+  "depositAmount": "100000000000000",
+  "sequence": "221",
+  "tokenAccount": "AkbvYPXENsG7kihPzZYZxwgi8eRaxaZESfbYaufJfZGm",
+  "mintAddress": "25gnkHxjWaadEPKTi3gd7RXzBFNMWBRZEwNjMrQe9NJi",
+  "txSignature": "3giMUkp6uLUm5J1hKsv3Bkk6schedaoHNmMCCVsKtpjLfpVLCMKARZ9zmi3h7ronPZr635gkGayefGip7cccruwB",
+  "explorerUrl": "https://explorer.solana.com/tx/3giMUkp6uLUm5J1hKsv3Bkk6schedaoHNmMCCVsKtpjLfpVLCMKARZ9zmi3h7ronPZr635gkGayefGip7cccruwB?cluster=devnet",
+  "timestamp": 1745998550508
+}

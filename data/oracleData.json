@@ -1,0 +1,19 @@
+{
+  "0x7526107B197B34e9730242FEB61d5aF424f92D2f": {
+    "user": "0x7526107B197B34e9730242FEB61d5aF424f92D2f",
+    "depositAmount": "100000000000000",
+    "sequence": "105",
+    "tokenAccount": "FUvHck7ztvsuxHNsynHZC1zSxFVgBWrPeTmRF7YFqEqb",
+    "txSignature": "5yLgGWUNm8nBgkRu87hwoqAcF5xCeTeYFUKE7a95ghFfYKL9rMeHysefwBdjoLDhQAH3nGHHNxuQHeYHQveKzMFd",
+    "explorerUrl": "https://explorer.solana.com/tx/5yLgGWUNm8nBgkRu87hwoqAcF5xCeTeYFUKE7a95ghFfYKL9rMeHysefwBdjoLDhQAH3nGHHNxuQHeYHQveKzMFd?cluster=devnet"
+  },
+  "0x7526107b197b34e9730242feb61d5af424f92d2f": {
+    "user": "0x7526107B197B34e9730242FEB61d5aF424f92D2f",
+    "depositAmount": "100000000000000",
+    "sequence": "215",
+    "tokenAccount": "BVYi5FKXSYbNJLYSB7PARbkNQtNqxwXseZLATLUtyvRY",
+    "mintAddress": "AiBxKi9yFjHQVRZRCLTA5nbU68UasDPs7VRqgyGUp7PM",
+    "txSignature": "z3E8Gv5XCiYm1Fx3jC5qiokREKZhFDB1jTwCk4r6ReCyn7euippFenLFuAAmJgemzK1Rr4E2Kw872Y4tbX6tt4g",
+    "explorerUrl": "https://explorer.solana.com/tx/z3E8Gv5XCiYm1Fx3jC5qiokREKZhFDB1jTwCk4r6ReCyn7euippFenLFuAAmJgemzK1Rr4E2Kw872Y4tbX6tt4g?cluster=devnet"
+  }
+}

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lock & Mint Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body{font-family:Arial,sans-serif;margin:20px;max-width:640px}
+    label{display:block;margin:12px 0 4px}
+    input,button{padding:8px;margin-bottom:8px;width:100%}
+    #status{white-space:pre-wrap;border:1px solid #ccc;padding:8px;height:140px;overflow:auto}
+  </style>
+
+  <!-- ethers.js -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <!-- подключаем внешний скрипт -->
+  <script defer src="js/app.js"></script>
+</head>
+<body>
+
+<h1>Lock &amp; Mint Demo</h1>
+
+<button id="connectEvm">Подключить кошелёк (EVM)</button>
+
+<label>Сумма, ETH
+  <input id="ethAmount" type="number" min="0.0001" step="0.0001" value="1" />
+</label>
+
+<label>Срок блокировки, дней (1-365)
+  <input id="lockDays" type="number" min="1" max="365" value="30" />
+</label>
+
+<label>Процент для инвесторов, % (5-50)
+  <input id="ratePercent" type="number" min="5" max="50" value="10" />
+</label>
+
+<button id="preview">Посчитать сколько получу / отдам</button>
+<button id="lockEth">Создать Stake</button>
+
+<pre id="status"></pre>
+
+</body>
+</html>

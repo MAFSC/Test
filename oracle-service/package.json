@@ -1,0 +1,16 @@
+{
+  "name": "oracle-service",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node oracle.mjs"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "web3": "^1.9.0",
+    "@solana/web3.js": "^1.98.2",
+    "@solana/spl-token": "^0.4.13"
+  }
+}
